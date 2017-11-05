@@ -1,6 +1,6 @@
 import argparse
+import item
 import logging
-import object_map
 import osm_map
 
 
@@ -11,7 +11,7 @@ def main():
 
     _map = osm_map.parse(args.osm_path)
 
-    output_items = object_map.parse(_map)
+    output_items = item.parse(_map)
 
     [print(item) for item in output_items]
 
