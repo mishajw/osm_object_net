@@ -69,15 +69,22 @@ def handle_element(
 def handle_node(node_element: et.Element, node_children: List[et.Element]) -> Node:
     attributes = node_element.attrib
 
-    # Get the node id from the attributes then remove it from the dict
-    assert "id" in attributes
-    node_id = int(attributes["id"])
-    attributes.pop("id")
+    # Get the ID from the attributes
+    node_id = extract_id(attributes)
 
     # Add children - we assume they are all tag nodes
     attributes.update(tag_elements_to_dict(node_children))
 
     return Node(node_id, attributes)
+
+
+def extract_id(attributes: Dict[str, str]) -> int:
+    # Get the id from the attributes then remove it from the dict
+    assert "id" in attributes
+    element_id = int(attributes["id"])
+    attributes.pop("id")
+
+    return element_id
 
 
 def tag_elements_to_dict(tag_elements: List[et.Element]) -> Dict[str, str]:
