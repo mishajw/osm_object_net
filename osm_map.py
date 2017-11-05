@@ -11,7 +11,7 @@ Node = NamedTuple("Node", [("id", int), ("attributes", Dict[str, str])])
 Way = NamedTuple("Way", [("id", int), ("nodes", List[Node]), ("attributes", Dict[str, str])])
 
 
-class ParseResults:
+class OsmMap:
     def __init__(self) -> None:
         # TODO: do we need this now we've got `__node_dict`?
         self.__nodes: List[Node] = []
@@ -50,8 +50,8 @@ class ParseResults:
         analyse_list(self.__ways)
 
 
-def parse(osm_path: str) -> ParseResults:
-    parse_results = ParseResults()
+def parse(osm_path: str) -> OsmMap:
+    osm_map = OsmMap()
 
     map_iter = ElementTree.iterparse(osm_path, events=("start", "end"))
 
@@ -67,7 +67,7 @@ def parse(osm_path: str) -> ParseResults:
         elif event == "end" and element == current_element:
             log.debug(f"Finished element {element}")
 
-            __handle_element(current_element, current_element_children, parse_results)
+            __handle_element(current_element, current_element_children, osm_map)
 
             log.debug("Resetting current element")
             current_element = None
@@ -81,18 +81,18 @@ def parse(osm_path: str) -> ParseResults:
         else:
             log.warning(f"Unhandled element {element}")
 
-    return parse_results
+    return osm_map
 
 
 def __handle_element(
-        element: ElementTree.Element, children: List[ElementTree.Element], parse_results: ParseResults) -> None:
+        element: ElementTree.Element, children: List[ElementTree.Element], osm_map: OsmMap) -> None:
 
     log.debug(f"Handling element {element} with children {children}")
 
     if element.tag == "node":
-        parse_results.add_node(__handle_node(element, children))
+        osm_map.add_node(__handle_node(element, children))
     if element.tag == "way":
-        parse_results.add_way(__handle_way(element, children, parse_results.get_node))
+        osm_map.add_way(__handle_way(element, children, osm_map.get_node))
     else:
         log.warning(f"Saw unknown tag type in element {element}")
 
