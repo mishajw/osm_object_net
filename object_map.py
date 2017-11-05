@@ -135,16 +135,19 @@ way_based_creators = [subclass.from_way for subclass in __get_subclasses(WayBase
 
 
 def parse(input_map: osm_map.OsmMap) -> List[Item]:
-    def parse_list(l: Union[List[osm_map.OsmNode], List[osm_map.OsmWay]], classes) -> List[Item]:
-        for element in l:
-            for element_creator in classes:
-                try:
-                    yield element_creator(element)
-                    break
-                except AssertionError:
-                    pass
+    def parse_osm_element(element: Union[osm_map.OsmNode, osm_map.OsmWay], creators) -> Optional[Item]:
+        for element_creator in creators:
+            try:
+                return element_creator(element)
+            except AssertionError:
+                pass
 
-            log.warning(f"Couldn't parse {element} as any type")
+        log.warning(f"Couldn't parse {element} as any type")
+        return None
+
+    def parse_list(l: Union[List[osm_map.OsmNode], List[osm_map.OsmWay]], classes) -> List[Item]:
+        parse_attempts = [parse_osm_element(element, classes) for element in l]
+        return [item_opt for item_opt in parse_attempts if item_opt is not None]
 
     node_items = parse_list(input_map.get_nodes(), node_based_creators)
     way_items = parse_list(input_map.get_ways(), way_based_creators)
