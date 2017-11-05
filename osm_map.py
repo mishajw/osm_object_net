@@ -8,9 +8,7 @@ parsable_tags = ["node", "way"]
 
 OsmNode = NamedTuple("OsmNode", [("id", int), ("attributes", Dict[str, str])])
 
-OsmNodeReference = NamedTuple("OsmNodeReference", [("id", int)])
-
-OsmWay = NamedTuple("OsmWay", [("id", int), ("nodes", List[OsmNodeReference]), ("attributes", Dict[str, str])])
+OsmWay = NamedTuple("OsmWay", [("id", int), ("nodes", List[OsmNode]), ("attributes", Dict[str, str])])
 
 
 class OsmMap:
@@ -100,7 +98,7 @@ def __handle_element(
     if element.tag == "node":
         osm_map.add_node(__handle_node(element, children))
     if element.tag == "way":
-        osm_map.add_way(__handle_way(element, children))
+        osm_map.add_way(__handle_way(element, children, osm_map.get_node))
     else:
         log.warning(f"Saw unknown tag type in element {element}")
 
@@ -119,7 +117,8 @@ def __handle_node(node_element: ElementTree.Element, node_children: List[Element
 
 def __handle_way(
         way_element: ElementTree.Element,
-        way_children: List[ElementTree.Element]) -> OsmWay:
+        way_children: List[ElementTree.Element],
+        get_node_fn: Callable[[int], OsmNode]) -> OsmWay:
 
     attributes = way_element.attrib
 
@@ -127,7 +126,7 @@ def __handle_way(
     way_id = __extract_id(attributes)
 
     tags: List[ElementTree.Element] = []
-    nodes: List[OsmNodeReference] = []
+    nodes: List[OsmNode] = []
 
     for child in way_children:
         if child.tag == "tag":
@@ -136,7 +135,7 @@ def __handle_way(
         elif child.tag == "nd":
             assert list(child.attrib.keys()) == ["ref"]
             node_id = int(child.attrib["ref"])
-            nodes.append(node_id)
+            nodes.append(get_node_fn(node_id))
 
     # Add children - we assume they are all tag nodes
     attributes.update(__tag_elements_to_dict(tags))
