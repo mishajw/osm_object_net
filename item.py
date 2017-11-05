@@ -50,6 +50,9 @@ class Coords:
             {"base": "list", "type": "coords"}
         ]
 
+    def get_dict(self):
+        return {"lat": self.lat, "lon": self.lon}
+
 
 class Item:
     def __init__(self, _id: int):
@@ -60,6 +63,9 @@ class Item:
 
     @staticmethod
     def get_object_net_types():
+        raise NotImplementedError()
+
+    def get_dict(self):
         raise NotImplementedError()
 
 
@@ -77,6 +83,9 @@ class NodeBasedItem(Item):
         start_coords = projection(Coords(self.coords.lat - radius, self.coords.lon - radius))
         end_coords = projection(Coords(self.coords.lat + radius, self.coords.lon + radius))
         draw.ellipse((start_coords.lat, start_coords.lon, end_coords.lat, end_coords.lon), (255, 0, 0))
+
+    def get_dict(self):
+        return {"coords": self.coords.get_dict()}
 
     @staticmethod
     def get_object_net_types():
@@ -102,6 +111,9 @@ class WayBasedItem(Item):
     @staticmethod
     def get_object_net_types():
         raise NotImplementedError()
+
+    def get_dict(self):
+        return {"all_coords": [c.get_dict() for c in self.all_coords]}
 
 
 class Tree(NodeBasedItem):
@@ -154,6 +166,11 @@ class Road(WayBasedItem):
             }
         ]
 
+    def get_dict(self):
+        d = super().get_dict()
+        d["road_type"] = self.road_type.name.lower()
+        return d
+
 
 class Building(WayBasedItem):
     class BuildingType(StringEnum):
@@ -164,9 +181,9 @@ class Building(WayBasedItem):
         GARAGE = 4
         GARAGES = 5
 
-    def __init__(self, _id: int, all_coords: List[Coords], house_type: BuildingType):
+    def __init__(self, _id: int, all_coords: List[Coords], building_type: BuildingType):
         super().__init__(_id, all_coords)
-        self.house_type = house_type
+        self.building_type = building_type
 
     @classmethod
     def from_way(cls, way: osm_map.Way):
@@ -191,6 +208,11 @@ class Building(WayBasedItem):
                 "options": Building.BuildingType.get_names()
             }
         ]
+
+    def get_dict(self):
+        d = super().get_dict()
+        d["building_type"] = self.building_type.name.lower()
+        return d
 
 
 def __get_subclasses(cls):
