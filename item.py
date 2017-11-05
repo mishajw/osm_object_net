@@ -3,6 +3,7 @@ from typing import Union, List, Optional, Callable
 import PIL.Image
 import PIL.ImageDraw
 import logging
+import object_net
 import osm_map
 
 log = logging.getLogger(__name__)
@@ -11,16 +12,19 @@ log = logging.getLogger(__name__)
 class StringEnum(Enum):
     @classmethod
     def contains_str(cls, s: str) -> bool:
-        names = [road_type.name.lower() for road_type in cls]
-        return s in names
+        return s in cls.get_names()
 
     @classmethod
     def get_from_str(cls, s: str):
-        for road_type in cls:
-            if s == road_type.name.lower():
-                return road_type
+        for t in cls:
+            if s == t.name.lower():
+                return t
 
         return None
+
+    @classmethod
+    def get_names(cls):
+        return [road_type.name.lower() for road_type in cls]
 
 
 class Coords:
@@ -39,12 +43,23 @@ class Coords:
         # TODO this won't work
         return [Coords.from_node(node) for node in way.nodes]
 
+    @staticmethod
+    def get_object_net_types():
+        return [
+            {"base": "object", "name": "coords", "lat": "float", "lon": "float"},
+            {"base": "list", "type": "coords"}
+        ]
+
 
 class Item:
     def __init__(self, _id: int):
         self.id = _id
 
     def draw(self, draw: PIL.ImageDraw.Draw, projection: Callable[[Coords], Coords]) -> None:
+        raise NotImplementedError()
+
+    @staticmethod
+    def get_object_net_types():
         raise NotImplementedError()
 
 
@@ -63,6 +78,10 @@ class NodeBasedItem(Item):
         end_coords = projection(Coords(self.coords.lat + radius, self.coords.lon + radius))
         draw.ellipse((start_coords.lat, start_coords.lon, end_coords.lat, end_coords.lon), (255, 0, 0))
 
+    @staticmethod
+    def get_object_net_types():
+        raise NotImplementedError()
+
 
 class WayBasedItem(Item):
     def __init__(self, _id: int, all_coords: List[Coords]):
@@ -80,6 +99,10 @@ class WayBasedItem(Item):
 
             draw.line((proj_start.lat, proj_start.lon, proj_end.lat, proj_end.lon), (0, 255, 0))
 
+    @staticmethod
+    def get_object_net_types():
+        raise NotImplementedError()
+
 
 class Tree(NodeBasedItem):
     def __init__(self, _id: int, coords: Coords):
@@ -93,6 +116,10 @@ class Tree(NodeBasedItem):
         coords = Coords.from_node(node)
 
         return Tree(node.id, coords)
+
+    @staticmethod
+    def get_object_net_types():
+        return [{"base": "object", "name": "tree", "coords": "coords"}]
 
 
 class Road(WayBasedItem):
@@ -110,6 +137,22 @@ class Road(WayBasedItem):
         assert Road.RoadType.contains_str(way.attributes["highway"])
 
         return Road(way.id, Coords.list_from_way(way), Road.RoadType.get_from_str(way.attributes["highway"]))
+
+    @staticmethod
+    def get_object_net_types():
+        return [
+            {
+                "base": "object",
+                "name": "road",
+                "all_coords": "list[coords]",
+                "road_type": "road_type"
+            },
+            {
+                "base": "enum",
+                "name": "road_type",
+                "options": Road.RoadType.get_names()
+            }
+        ]
 
 
 class Building(WayBasedItem):
@@ -132,6 +175,22 @@ class Building(WayBasedItem):
 
         return Building(
             way.id, Coords.list_from_way(way), Building.BuildingType.get_from_str(way.attributes["building"]))
+
+    @staticmethod
+    def get_object_net_types():
+        return [
+            {
+                "base": "object",
+                "name": "building",
+                "all_coords": "list[coords]",
+                "building_type": "building_type"
+            },
+            {
+                "base": "enum",
+                "name": "building_type",
+                "options": Building.BuildingType.get_names()
+            }
+        ]
 
 
 def __get_subclasses(cls):
@@ -204,3 +263,25 @@ def make_image(items: List[Item], image_cols: int, image_rows: int, save_path: s
     del draw
 
     image.save(save_path)
+
+
+def get_object_net_type() -> object_net.types.Type:
+    type_dict = {
+        "types": [
+            {
+                "base": "list",
+                "type": "item"
+            },
+            {
+                "base": "union",
+                "name": "item",
+                "types": ["tree", "road", "building"]
+            },
+        ]
+        + Coords.get_object_net_types()
+        + Tree.get_object_net_types()
+        + Road.get_object_net_types()
+        + Building.get_object_net_types()
+    }
+
+    return object_net.types.create_from_dict(type_dict)[0]
