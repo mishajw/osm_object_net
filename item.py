@@ -1,5 +1,7 @@
 from enum import Enum
-from typing import Union, List, Dict, Optional
+from typing import Union, List, Optional, Callable
+import PIL.Image
+import PIL.ImageDraw
 import logging
 import osm_map
 
@@ -42,6 +44,9 @@ class Item:
     def __init__(self, _id: int):
         self.id = _id
 
+    def draw(self, draw: PIL.ImageDraw.Draw, projection: Callable[[Coords], Coords]) -> None:
+        raise NotImplementedError()
+
 
 class NodeBasedItem(Item):
     def __init__(self, _id: int, coords: Coords):
@@ -52,6 +57,12 @@ class NodeBasedItem(Item):
     def from_node(cls, node: osm_map.Node):
         raise NotImplementedError()
 
+    def draw(self, draw: PIL.ImageDraw.Draw, projection: Callable[[Coords], Coords]) -> None:
+        radius = 0.0001
+        start_coords = projection(Coords(self.coords.lat - radius, self.coords.lon - radius))
+        end_coords = projection(Coords(self.coords.lat + radius, self.coords.lon + radius))
+        draw.ellipse((start_coords.lat, start_coords.lon, end_coords.lat, end_coords.lon), (255, 0, 0))
+
 
 class WayBasedItem(Item):
     def __init__(self, _id: int, all_coords: List[Coords]):
@@ -61,6 +72,13 @@ class WayBasedItem(Item):
     @classmethod
     def from_way(cls, way: osm_map.Way):
         raise NotImplementedError()
+
+    def draw(self, draw: PIL.ImageDraw.Draw, projection: Callable[[Coords], Coords]) -> None:
+        for start, end in zip(self.all_coords[1:], self.all_coords[:-1]):
+            proj_start = projection(start)
+            proj_end = projection(end)
+
+            draw.line((proj_start.lat, proj_start.lon, proj_end.lat, proj_end.lon), (0, 255, 0))
 
 
 class Tree(NodeBasedItem):
@@ -153,3 +171,36 @@ def parse(_map: osm_map.Map) -> List[Item]:
     way_items = parse_list(_map.get_ways(), way_based_creators)
 
     return list(node_items) + list(way_items)
+
+
+def get_min_max_coords(items: List[Item]):
+    all_coords = []
+
+    for item in items:
+        if isinstance(item, NodeBasedItem):
+            all_coords.append(item.coords)
+        elif isinstance(item, WayBasedItem):
+            all_coords.extend(item.all_coords)
+
+    all_lat = [coords.lat for coords in all_coords]
+    all_lon = [coords.lon for coords in all_coords]
+
+    return Coords(min(all_lat), min(all_lon)), Coords(max(all_lat), max(all_lon))
+
+
+def make_image(items: List[Item], image_cols: int, image_rows: int, save_path: str):
+    image = PIL.Image.new("RGB", [image_cols, image_rows])
+    draw = PIL.ImageDraw.Draw(image)
+
+    min_coords, max_coords = get_min_max_coords(items)
+
+    def projection(coords: Coords) -> Coords:
+        return Coords(
+            (coords.lat - min_coords.lat) / (max_coords.lat - min_coords.lat) * image_cols,
+            (coords.lon - min_coords.lon) / (max_coords.lon - min_coords.lon) * image_rows)
+
+    for item in items:
+        item.draw(draw, projection)
+    del draw
+
+    image.save(save_path)

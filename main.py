@@ -13,7 +13,9 @@ def main():
 
     output_items = item.parse(_map)
 
-    [print(item) for item in output_items]
+    [print(_item) for _item in output_items]
+
+    item.make_image(output_items, 1080, 1080, "images/test.png")
 
 
 if __name__ == "__main__":
