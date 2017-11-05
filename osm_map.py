@@ -6,28 +6,28 @@ log = logging.getLogger(__name__)
 
 parsable_tags = ["node", "way"]
 
-OsmNode = NamedTuple("OsmNode", [("id", int), ("attributes", Dict[str, str])])
+Node = NamedTuple("OsmNode", [("id", int), ("attributes", Dict[str, str])])
 
-OsmWay = NamedTuple("OsmWay", [("id", int), ("nodes", List[OsmNode]), ("attributes", Dict[str, str])])
+Way = NamedTuple("OsmWay", [("id", int), ("nodes", List[Node]), ("attributes", Dict[str, str])])
 
 
-class OsmMap:
+class Map:
     def __init__(self) -> None:
         # TODO: do we need this now we've got `__node_dict`?
-        self.__nodes: List[OsmNode] = []
-        self.__ways: List[OsmWay] = []
+        self.__nodes: List[Node] = []
+        self.__ways: List[Way] = []
 
         # Maps from node id to nodes for quick lookup
-        self.__node_dict: Dict[int, OsmNode] = {}
+        self.__node_dict: Dict[int, Node] = {}
 
-    def add_node(self, node: OsmNode):
+    def add_node(self, node: Node):
         self.__nodes.append(node)
         self.__node_dict[node.id] = node
 
     def get_node(self, node_id: int):
         return self.__node_dict[node_id]
 
-    def add_way(self, way: OsmWay):
+    def add_way(self, way: Way):
         self.__ways.append(way)
 
     def get_nodes(self):
@@ -56,8 +56,8 @@ class OsmMap:
         analyse_list(self.__ways)
 
 
-def parse(osm_path: str) -> OsmMap:
-    osm_map = OsmMap()
+def parse(osm_path: str) -> Map:
+    _map = Map()
 
     map_iter = ElementTree.iterparse(osm_path, events=("start", "end"))
 
@@ -73,7 +73,7 @@ def parse(osm_path: str) -> OsmMap:
         elif event == "end" and element == current_element:
             log.debug(f"Finished element {element}")
 
-            __handle_element(current_element, current_element_children, osm_map)
+            __handle_element(current_element, current_element_children, _map)
 
             log.debug("Resetting current element")
             current_element = None
@@ -87,23 +87,23 @@ def parse(osm_path: str) -> OsmMap:
         else:
             log.warning(f"Unhandled element {element}")
 
-    return osm_map
+    return _map
 
 
 def __handle_element(
-        element: ElementTree.Element, children: List[ElementTree.Element], osm_map: OsmMap) -> None:
+        element: ElementTree.Element, children: List[ElementTree.Element], _map: Map) -> None:
 
     log.debug(f"Handling element {element} with children {children}")
 
     if element.tag == "node":
-        osm_map.add_node(__handle_node(element, children))
+        _map.add_node(__handle_node(element, children))
     if element.tag == "way":
-        osm_map.add_way(__handle_way(element, children, osm_map.get_node))
+        _map.add_way(__handle_way(element, children, _map.get_node))
     else:
         log.warning(f"Saw unknown tag type in element {element}")
 
 
-def __handle_node(node_element: ElementTree.Element, node_children: List[ElementTree.Element]) -> OsmNode:
+def __handle_node(node_element: ElementTree.Element, node_children: List[ElementTree.Element]) -> Node:
     attributes = node_element.attrib
 
     # Get the ID from the attributes
@@ -112,13 +112,13 @@ def __handle_node(node_element: ElementTree.Element, node_children: List[Element
     # Add children - we assume they are all tag nodes
     attributes.update(__tag_elements_to_dict(node_children))
 
-    return OsmNode(node_id, attributes)
+    return Node(node_id, attributes)
 
 
 def __handle_way(
         way_element: ElementTree.Element,
         way_children: List[ElementTree.Element],
-        get_node_fn: Callable[[int], OsmNode]) -> OsmWay:
+        get_node_fn: Callable[[int], Node]) -> Way:
 
     attributes = way_element.attrib
 
@@ -126,7 +126,7 @@ def __handle_way(
     way_id = __extract_id(attributes)
 
     tags: List[ElementTree.Element] = []
-    nodes: List[OsmNode] = []
+    nodes: List[Node] = []
 
     for child in way_children:
         if child.tag == "tag":
@@ -140,7 +140,7 @@ def __handle_way(
     # Add children - we assume they are all tag nodes
     attributes.update(__tag_elements_to_dict(tags))
 
-    return OsmWay(way_id, nodes, attributes)
+    return Way(way_id, nodes, attributes)
 
 
 def __extract_id(attributes: Dict[str, str]) -> int:

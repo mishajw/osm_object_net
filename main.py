@@ -9,11 +9,11 @@ def main():
     parser.add_argument("--osm_path", type=str, help="The path of the .osm file to parse", default="data/map.osm")
     args = parser.parse_args()
 
-    output_osm_map = osm_map.parse(args.osm_path)
+    _map = osm_map.parse(args.osm_path)
 
-    output_items = object_map.parse(output_osm_map)
+    output_items = object_map.parse(_map)
 
-    print(output_items)
+    [print(item) for item in output_items]
 
 
 if __name__ == "__main__":

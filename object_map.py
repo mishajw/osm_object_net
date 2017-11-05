@@ -27,13 +27,13 @@ class Coords:
         self.lon = lon
 
     @classmethod
-    def from_node(cls, node: osm_map.OsmNode):
+    def from_node(cls, node: osm_map.Node):
         assert "lat" in node.attributes
         assert "lon" in node.attributes
         return Coords(float(node.attributes["lat"]), float(node.attributes["lon"]))
 
     @classmethod
-    def list_from_way(cls, way: osm_map.OsmWay):
+    def list_from_way(cls, way: osm_map.Way):
         # TODO this won't work
         return [Coords.from_node(node) for node in way.nodes]
 
@@ -49,7 +49,7 @@ class NodeBasedItem(Item):
         self.coords = coords
 
     @classmethod
-    def from_node(cls, node: osm_map.OsmNode):
+    def from_node(cls, node: osm_map.Node):
         raise NotImplementedError()
 
 
@@ -59,7 +59,7 @@ class WayBasedItem(Item):
         self.all_coords = all_coords
 
     @classmethod
-    def from_way(cls, way: osm_map.OsmWay):
+    def from_way(cls, way: osm_map.Way):
         raise NotImplementedError()
 
 
@@ -68,7 +68,7 @@ class Tree(NodeBasedItem):
         super().__init__(_id, coords)
 
     @classmethod
-    def from_node(cls, node: osm_map.OsmNode):
+    def from_node(cls, node: osm_map.Node):
         assert "natural" in node.attributes
         assert node.attributes["natural"] == "tree"
 
@@ -87,7 +87,7 @@ class Road(WayBasedItem):
         self.road_type = road_type
 
     @classmethod
-    def from_way(cls, way: osm_map.OsmWay):
+    def from_way(cls, way: osm_map.Way):
         assert "highway" in way.attributes
         assert Road.RoadType.contains_str(way.attributes["highway"])
 
@@ -108,7 +108,7 @@ class Building(WayBasedItem):
         self.house_type = house_type
 
     @classmethod
-    def from_way(cls, way: osm_map.OsmWay):
+    def from_way(cls, way: osm_map.Way):
         assert "building" in way.attributes
         assert Building.BuildingType.contains_str(way.attributes["building"])
 
@@ -134,8 +134,8 @@ node_based_creators = [subclass.from_node for subclass in __get_subclasses(NodeB
 way_based_creators = [subclass.from_way for subclass in __get_subclasses(WayBasedItem)]
 
 
-def parse(input_map: osm_map.OsmMap) -> List[Item]:
-    def parse_osm_element(element: Union[osm_map.OsmNode, osm_map.OsmWay], creators) -> Optional[Item]:
+def parse(_map: osm_map.Map) -> List[Item]:
+    def parse_osm_element(element: Union[osm_map.Node, osm_map.Way], creators) -> Optional[Item]:
         for element_creator in creators:
             try:
                 return element_creator(element)
@@ -145,11 +145,11 @@ def parse(input_map: osm_map.OsmMap) -> List[Item]:
         log.warning(f"Couldn't parse {element} as any type")
         return None
 
-    def parse_list(l: Union[List[osm_map.OsmNode], List[osm_map.OsmWay]], classes) -> List[Item]:
+    def parse_list(l: Union[List[osm_map.Node], List[osm_map.Way]], classes) -> List[Item]:
         parse_attempts = [parse_osm_element(element, classes) for element in l]
         return [item_opt for item_opt in parse_attempts if item_opt is not None]
 
-    node_items = parse_list(input_map.get_nodes(), node_based_creators)
-    way_items = parse_list(input_map.get_ways(), way_based_creators)
+    node_items = parse_list(_map.get_nodes(), node_based_creators)
+    way_items = parse_list(_map.get_ways(), way_based_creators)
 
     return list(node_items) + list(way_items)
