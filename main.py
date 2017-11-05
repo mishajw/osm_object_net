@@ -20,16 +20,6 @@ class ParseResults:
         # Maps from node id to nodes for quick lookup
         self.__node_dict: Dict[int, Node] = {}
 
-    def print_summary(self):
-        print("Parse results summary")
-        print("Nodes:")
-        for node in self.__nodes:
-            print(f"{node.id} -> {node.attributes}")
-        print("Ways:")
-        for way in self.__ways:
-            print(f"{way.id} -> {way.nodes}")
-            print(f"{way.id} -> {way.attributes}")
-
     def add_node(self, node: Node):
         self.__nodes.append(node)
         self.__node_dict[node.id] = node
@@ -45,7 +35,6 @@ def main():
     parse_results = ParseResults()
 
     map_iter = et.iterparse("data/map.osm", events=("start", "end"))
-    map_iter = itertools.islice(map_iter, 100)
 
     current_element: et.Element = None
     current_element_children: List[et.Element] = []
@@ -72,8 +61,6 @@ def main():
 
         else:
             log.warn(f"Unhandled element {element}")
-
-    parse_results.print_summary()
 
 
 def handle_element(
