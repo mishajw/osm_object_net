@@ -94,6 +94,28 @@ class Road(WayBasedItem):
         return Road(way.id, Coords.list_from_way(way), Road.RoadType.get_from_str(way.attributes["highway"]))
 
 
+class Building(WayBasedItem):
+    class BuildingType(StringEnum):
+        YES = 0
+        HOUSE = 1
+        RESIDENTIAL = 2
+        APARTMENTS = 3
+        GARAGE = 4
+        GARAGES = 5
+
+    def __init__(self, _id: int, all_coords: List[Coords], house_type: BuildingType):
+        super().__init__(_id, all_coords)
+        self.house_type = house_type
+
+    @classmethod
+    def from_way(cls, way: osm_map.OsmWay):
+        assert "building" in way.attributes
+        assert Building.BuildingType.contains_str(way.attributes["building"])
+
+        return Building(
+            way.id, Coords.list_from_way(way), Building.BuildingType.get_from_str(way.attributes["building"]))
+
+
 def __get_subclasses(cls):
     subclasses = set()
     work = [cls]
