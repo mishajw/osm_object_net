@@ -1,9 +1,24 @@
 from enum import Enum
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Optional
 import logging
 import osm_map
 
 log = logging.getLogger(__name__)
+
+
+class StringEnum(Enum):
+    @classmethod
+    def contains_str(cls, s: str) -> bool:
+        names = [road_type.name.lower() for road_type in cls]
+        return s in names
+
+    @classmethod
+    def get_from_str(cls, s: str):
+        for road_type in cls:
+            if s == road_type.name.lower():
+                return road_type
+
+        return None
 
 
 class Coords:
@@ -63,12 +78,9 @@ class Tree(NodeBasedItem):
 
 
 class Road(WayBasedItem):
-    class RoadType(Enum):
+    class RoadType(StringEnum):
         Residential = 0
         Footway = 1
-
-    __road_type_dict: Dict[str, RoadType] = \
-        dict([(road_type.name.lower(), road_type) for road_type in RoadType])
 
     def __init__(self, _id: int, all_coords: List[Coords], road_type: RoadType):
         super().__init__(_id, all_coords)
@@ -77,9 +89,9 @@ class Road(WayBasedItem):
     @classmethod
     def from_way(cls, way: osm_map.OsmWay):
         assert "highway" in way.attributes
-        assert way.attributes["highway"] in Road.__road_type_dict.keys()
+        assert Road.RoadType.contains_str(way.attributes["highway"])
 
-        return Road(way.id, Coords.list_from_way(way), Road.__road_type_dict[way.attributes["highway"]])
+        return Road(way.id, Coords.list_from_way(way), Road.RoadType.get_from_str(way.attributes["highway"]))
 
 
 def __get_subclasses(cls):
