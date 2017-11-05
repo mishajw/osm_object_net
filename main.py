@@ -13,18 +13,32 @@ Way = NamedTuple("Way", [("id", int), ("nodes", List[Node]), ("attributes", Dict
 
 class ParseResults:
     def __init__(self) -> None:
-        self.nodes: List[Node] = []
-        self.ways: List[Way] = []
+        # TODO: do we need this now we've got `__node_dict`?
+        self.__nodes: List[Node] = []
+        self.__ways: List[Way] = []
+
+        # Maps from node id to nodes for quick lookup
+        self.__node_dict: Dict[int, Node] = {}
 
     def print_summary(self):
         print("Parse results summary")
         print("Nodes:")
-        for node in self.nodes:
+        for node in self.__nodes:
             print(f"{node.id} -> {node.attributes}")
         print("Ways:")
-        for way in self.ways:
+        for way in self.__ways:
             print(f"{way.id} -> {way.nodes}")
             print(f"{way.id} -> {way.attributes}")
+
+    def add_node(self, node: Node):
+        self.__nodes.append(node)
+        self.__node_dict[node.id] = node
+
+    def get_node(self, node_id: int):
+        return self.__node_dict[node_id]
+
+    def add_way(self, way: Way):
+        self.__ways.append(way)
 
 
 def main():
@@ -68,9 +82,9 @@ def handle_element(
     log.debug(f"Handling element {element} with children {children}")
 
     if element.tag == "node":
-        parse_results.nodes.append(handle_node(element, children))
+        parse_results.add_node(handle_node(element, children))
     if element.tag == "way":
-        parse_results.ways.append(handle_way(element, children, lambda _: None))
+        parse_results.add_way(handle_way(element, children, parse_results.get_node))
     else:
         log.warn(f"Saw unknown tag type in element {element}")
 
