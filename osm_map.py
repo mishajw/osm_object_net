@@ -32,6 +32,12 @@ class OsmMap:
     def add_way(self, way: OsmWay):
         self.__ways.append(way)
 
+    def get_nodes(self):
+        return self.__nodes
+
+    def get_ways(self):
+        return self.__ways
+
     def attribute_analysis(self):
         def analyse_list(l):
             attribute_counts: Dict[str, int] = {}

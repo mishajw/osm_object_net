@@ -1,5 +1,6 @@
 import argparse
 import logging
+import object_map
 import osm_map
 
 
@@ -8,9 +9,11 @@ def main():
     parser.add_argument("--osm_path", type=str, help="The path of the .osm file to parse", default="data/map.osm")
     args = parser.parse_args()
 
-    parse_results = osm_map.parse(args.osm_path)
+    output_osm_map = osm_map.parse(args.osm_path)
 
-    parse_results.attribute_analysis()
+    output_items = object_map.parse(output_osm_map)
+
+    print(output_items)
 
 
 if __name__ == "__main__":
