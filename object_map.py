@@ -105,11 +105,12 @@ def parse(input_map: osm_map.OsmMap) -> List[Item]:
         for element in l:
             for element_creator in classes:
                 try:
-                    log.debug(f"Trying to parse {element} as {element_creator}")
                     yield element_creator(element)
                     break
-                except AssertionError as e:
-                    log.debug(f"Couldn't due to {e}")
+                except AssertionError:
+                    pass
+
+            log.warning(f"Couldn't parse {element} as any type")
 
     node_items = parse_list(input_map.get_nodes(), node_based_creators)
     way_items = parse_list(input_map.get_ways(), way_based_creators)
