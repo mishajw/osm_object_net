@@ -61,14 +61,26 @@ def handle_element(
     log.debug(f"Handling element {element} with children {children}")
 
     if element.tag == "node":
-        # Get the node id from the attributes then remove it from the dict
-        assert "id" in element.attrib
-        node_id = int(element.attrib["id"])
-        element.attrib.pop("id")
-
-        parse_results.nodes.append(Node(node_id, element.attrib))
+        parse_results.nodes.append(handle_node(element, children))
     else:
         log.warn(f"Saw unknown tag type in element {element}")
+
+
+def handle_node(node_element: et.Element, node_children: List[et.Element]) -> Node:
+    attributes = node_element.attrib
+
+    # Get the node id from the attributes then remove it from the dict
+    assert "id" in attributes
+    node_id = int(attributes["id"])
+    attributes.pop("id")
+
+    for child in node_children:
+        if child.tag == "tag" and "k" in child.attrib and "v" in child.attrib:
+            attributes[child.attrib["k"]] = child.attrib["v"]
+        else:
+            log.warn(f"Couldn't parse {node_element}'s child {child}")
+
+    return Node(node_id, attributes)
 
 
 if __name__ == "__main__":
