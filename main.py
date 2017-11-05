@@ -1,5 +1,4 @@
-import xml.etree.ElementTree as et
-import itertools
+from xml.etree import ElementTree
 import logging
 from typing import Dict, List, NamedTuple, Callable
 
@@ -10,6 +9,7 @@ parsable_tags = ["node", "way"]
 Node = NamedTuple("Node", [("id", int), ("attributes", Dict[str, str])])
 
 Way = NamedTuple("Way", [("id", int), ("nodes", List[Node]), ("attributes", Dict[str, str])])
+
 
 class ParseResults:
     def __init__(self) -> None:
@@ -53,10 +53,10 @@ class ParseResults:
 def main():
     parse_results = ParseResults()
 
-    map_iter = et.iterparse("data/map.osm", events=("start", "end"))
+    map_iter = ElementTree.iterparse("data/map.osm", events=("start", "end"))
 
-    current_element: et.Element = None
-    current_element_children: List[et.Element] = []
+    current_element: ElementTree.Element = None
+    current_element_children: List[ElementTree.Element] = []
 
     for event, element in map_iter:
         if current_element is None and event == "start" and element.tag in parsable_tags:
@@ -79,13 +79,13 @@ def main():
             current_element_children.append(element)
 
         else:
-            log.warn(f"Unhandled element {element}")
+            log.warning(f"Unhandled element {element}")
 
     parse_results.attribute_analysis()
 
 
 def handle_element(
-        element: et.Element, children: List[et.Element], parse_results: ParseResults) -> None:
+        element: ElementTree.Element, children: List[ElementTree.Element], parse_results: ParseResults) -> None:
 
     log.debug(f"Handling element {element} with children {children}")
 
@@ -94,10 +94,10 @@ def handle_element(
     if element.tag == "way":
         parse_results.add_way(handle_way(element, children, parse_results.get_node))
     else:
-        log.warn(f"Saw unknown tag type in element {element}")
+        log.warning(f"Saw unknown tag type in element {element}")
 
 
-def handle_node(node_element: et.Element, node_children: List[et.Element]) -> Node:
+def handle_node(node_element: ElementTree.Element, node_children: List[ElementTree.Element]) -> Node:
     attributes = node_element.attrib
 
     # Get the ID from the attributes
@@ -110,8 +110,8 @@ def handle_node(node_element: et.Element, node_children: List[et.Element]) -> No
 
 
 def handle_way(
-        way_element: et.Element,
-        way_children: List[et.Element],
+        way_element: ElementTree.Element,
+        way_children: List[ElementTree.Element],
         get_node_fn: Callable[[int], Node]) -> Way:
 
     attributes = way_element.attrib
@@ -119,7 +119,7 @@ def handle_way(
     # Get the ID from the attributes
     way_id = extract_id(attributes)
 
-    tags: List[et.Element] = []
+    tags: List[ElementTree.Element] = []
     nodes: List[Node] = []
 
     for child in way_children:
@@ -146,14 +146,14 @@ def extract_id(attributes: Dict[str, str]) -> int:
     return element_id
 
 
-def tag_elements_to_dict(tag_elements: List[et.Element]) -> Dict[str, str]:
+def tag_elements_to_dict(tag_elements: List[ElementTree.Element]) -> Dict[str, str]:
     tag_dict: Dict[str, str] = {}
 
     for element in tag_elements:
         assert element.tag == "tag"
 
-        if set(element.attrib.keys()) != set(["k", "v"]):
-            log.warn(f"Couldn't parse tag element {element} that had attribs {element.attrib}")
+        if set(element.attrib.keys()) != {"k", "v"}:
+            log.warning(f"Couldn't parse tag element {element} that had attribs {element.attrib}")
 
         tag_dict[element.attrib["k"]] = element.attrib["v"]
 
