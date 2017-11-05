@@ -30,6 +30,25 @@ class ParseResults:
     def add_way(self, way: Way):
         self.__ways.append(way)
 
+    def attribute_analysis(self):
+        def analyse_list(l):
+            attribute_counts: Dict[str, int] = {}
+
+            for node in self.__nodes:
+                for key in node.attributes:
+                    if key in attribute_counts:
+                        attribute_counts[key] += 1
+                    else:
+                        attribute_counts[key] = 1
+
+            for key in attribute_counts:
+                log.info(f"Found {attribute_counts[key]} occurrences of {key}")
+
+        log.info("Nodes:")
+        analyse_list(self.__nodes)
+        log.info("Ways:")
+        analyse_list(self.__ways)
+
 
 def main():
     parse_results = ParseResults()
@@ -61,6 +80,8 @@ def main():
 
         else:
             log.warn(f"Unhandled element {element}")
+
+    parse_results.attribute_analysis()
 
 
 def handle_element(
