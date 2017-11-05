@@ -1,23 +1,30 @@
 import xml.etree.ElementTree as et
 import itertools
 import logging
-from typing import Dict, List, NamedTuple
+from typing import Dict, List, NamedTuple, Callable
 
 log = logging.getLogger(__name__)
 
-parsable_tags = ["node"]
+parsable_tags = ["node", "way"]
 
 Node = NamedTuple("Node", [("id", int), ("attributes", Dict[str, str])])
+
+Way = NamedTuple("Way", [("id", int), ("nodes", List[Node]), ("attributes", Dict[str, str])])
 
 class ParseResults:
     def __init__(self) -> None:
         self.nodes: List[Node] = []
+        self.ways: List[Way] = []
 
     def print_summary(self):
         print("Parse results summary")
         print("Nodes:")
         for node in self.nodes:
             print(f"{node.id} -> {node.attributes}")
+        print("Ways:")
+        for way in self.ways:
+            print(f"{way.id} -> {way.nodes}")
+            print(f"{way.id} -> {way.attributes}")
 
 
 def main():
@@ -62,6 +69,8 @@ def handle_element(
 
     if element.tag == "node":
         parse_results.nodes.append(handle_node(element, children))
+    if element.tag == "way":
+        parse_results.ways.append(handle_way(element, children, lambda _: None))
     else:
         log.warn(f"Saw unknown tag type in element {element}")
 
@@ -76,6 +85,34 @@ def handle_node(node_element: et.Element, node_children: List[et.Element]) -> No
     attributes.update(tag_elements_to_dict(node_children))
 
     return Node(node_id, attributes)
+
+
+def handle_way(
+        way_element: et.Element,
+        way_children: List[et.Element],
+        get_node_fn: Callable[[int], Node]) -> Way:
+
+    attributes = way_element.attrib
+
+    # Get the ID from the attributes
+    way_id = extract_id(attributes)
+
+    tags: List[et.Element] = []
+    nodes: List[Node] = []
+
+    for child in way_children:
+        if child.tag == "tag":
+            tags.append(child)
+
+        elif child.tag == "nd":
+            assert list(child.attrib.keys()) == ["ref"]
+            node_id = int(child.attrib["ref"])
+            nodes.append(get_node_fn(node_id))
+
+    # Add children - we assume they are all tag nodes
+    attributes.update(tag_elements_to_dict(tags))
+
+    return Way(way_id, nodes, attributes)
 
 
 def extract_id(attributes: Dict[str, str]) -> int:
