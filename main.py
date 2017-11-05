@@ -74,13 +74,24 @@ def handle_node(node_element: et.Element, node_children: List[et.Element]) -> No
     node_id = int(attributes["id"])
     attributes.pop("id")
 
-    for child in node_children:
-        if child.tag == "tag" and "k" in child.attrib and "v" in child.attrib:
-            attributes[child.attrib["k"]] = child.attrib["v"]
-        else:
-            log.warn(f"Couldn't parse {node_element}'s child {child}")
+    # Add children - we assume they are all tag nodes
+    attributes.update(tag_elements_to_dict(node_children))
 
     return Node(node_id, attributes)
+
+
+def tag_elements_to_dict(tag_elements: List[et.Element]) -> Dict[str, str]:
+    tag_dict: Dict[str, str] = {}
+
+    for element in tag_elements:
+        assert element.tag == "tag"
+
+        if set(element.attrib.keys()) != set(["k", "v"]):
+            log.warn(f"Couldn't parse tag element {element} that had attribs {element.attrib}")
+
+        tag_dict[element.attrib["k"]] = element.attrib["v"]
+
+    return tag_dict
 
 
 if __name__ == "__main__":
