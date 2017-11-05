@@ -6,28 +6,28 @@ log = logging.getLogger(__name__)
 
 parsable_tags = ["node", "way"]
 
-Node = NamedTuple("Node", [("id", int), ("attributes", Dict[str, str])])
+OsmNode = NamedTuple("OsmNode", [("id", int), ("attributes", Dict[str, str])])
 
-Way = NamedTuple("Way", [("id", int), ("nodes", List[Node]), ("attributes", Dict[str, str])])
+OsmWay = NamedTuple("OsmWay", [("id", int), ("nodes", List[OsmNode]), ("attributes", Dict[str, str])])
 
 
 class OsmMap:
     def __init__(self) -> None:
         # TODO: do we need this now we've got `__node_dict`?
-        self.__nodes: List[Node] = []
-        self.__ways: List[Way] = []
+        self.__nodes: List[OsmNode] = []
+        self.__ways: List[OsmWay] = []
 
         # Maps from node id to nodes for quick lookup
-        self.__node_dict: Dict[int, Node] = {}
+        self.__node_dict: Dict[int, OsmNode] = {}
 
-    def add_node(self, node: Node):
+    def add_node(self, node: OsmNode):
         self.__nodes.append(node)
         self.__node_dict[node.id] = node
 
     def get_node(self, node_id: int):
         return self.__node_dict[node_id]
 
-    def add_way(self, way: Way):
+    def add_way(self, way: OsmWay):
         self.__ways.append(way)
 
     def attribute_analysis(self):
@@ -97,7 +97,7 @@ def __handle_element(
         log.warning(f"Saw unknown tag type in element {element}")
 
 
-def __handle_node(node_element: ElementTree.Element, node_children: List[ElementTree.Element]) -> Node:
+def __handle_node(node_element: ElementTree.Element, node_children: List[ElementTree.Element]) -> OsmNode:
     attributes = node_element.attrib
 
     # Get the ID from the attributes
@@ -106,13 +106,13 @@ def __handle_node(node_element: ElementTree.Element, node_children: List[Element
     # Add children - we assume they are all tag nodes
     attributes.update(__tag_elements_to_dict(node_children))
 
-    return Node(node_id, attributes)
+    return OsmNode(node_id, attributes)
 
 
 def __handle_way(
         way_element: ElementTree.Element,
         way_children: List[ElementTree.Element],
-        get_node_fn: Callable[[int], Node]) -> Way:
+        get_node_fn: Callable[[int], OsmNode]) -> OsmWay:
 
     attributes = way_element.attrib
 
@@ -120,7 +120,7 @@ def __handle_way(
     way_id = __extract_id(attributes)
 
     tags: List[ElementTree.Element] = []
-    nodes: List[Node] = []
+    nodes: List[OsmNode] = []
 
     for child in way_children:
         if child.tag == "tag":
@@ -134,7 +134,7 @@ def __handle_way(
     # Add children - we assume they are all tag nodes
     attributes.update(__tag_elements_to_dict(tags))
 
-    return Way(way_id, nodes, attributes)
+    return OsmWay(way_id, nodes, attributes)
 
 
 def __extract_id(attributes: Dict[str, str]) -> int:
