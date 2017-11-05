@@ -1,5 +1,5 @@
 import argparse
-import logging
+import logging.config
 import osm_map
 
 
@@ -11,9 +11,13 @@ def main():
     parse_results = osm_map.parse(args.osm_path)
 
     parse_results.attribute_analysis()
+    print("done")
 
 
 if __name__ == "__main__":
-    logging.basicConfig()
-    logging.getLogger().setLevel(logging.DEBUG)
+    try:
+        logging.config.fileConfig("logging.ini")
+    except KeyError:
+        logging.basicConfig()
+
     main()
